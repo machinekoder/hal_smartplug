@@ -1,5 +1,5 @@
 
-MACHINEKIT_DIR=~/bin/machinekit-1
+MACHINEKIT_DIR=/usr
 
 check:
 	nosetests test_hal_smartplug.py
