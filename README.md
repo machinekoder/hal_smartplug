@@ -1,5 +1,5 @@
-# HAL component for TP-Link HS110
-This is a Machinekit HAL component for the TP-Link HS110
+# HAL component for TP-Link HS100/HS110
+This is a Machinekit HAL component for the TP-Link HS100/HS110
 smart-plug. The HAL component uses the reverse engineered protocol
 en/decryption which is described at
 [SoftCheck](https://www.softscheck.com/en/reverse-engineering-tp-link-hs110/).
@@ -10,15 +10,18 @@ configuration with the following command:
 
 Classic HAL:
 ``` hal
-loadusr ./hal_smartplug.py -n smartplug -a <ip_address>
+loadusr ./hal_smartplug.py -n smartplug -e -a <ip_address>
 ```
 
 HAL Python:
 ``` python
 address = "10.0.0.8"
 name = "smartplug"
-smartplug = hal.loadusr('./hal_smartplug.py -n %s -a %s' % (name, address), wait_name=name)
+smartplug = hal.loadusr('./hal_smartplug.py -n %s -e -a %s' % (name, address), wait_name=name)
 ```
+
+To use the component with the **HS100 (smart plug without power monitor)**
+remove the optional argument `-e` from the command line.
 
 The component has the following pins:
 

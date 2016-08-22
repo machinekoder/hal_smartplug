@@ -3,7 +3,7 @@
 """
 hal_smartplug.py
 
-TP-Link HS110 HAL driver
+TP-Link HS100/HS110 HAL driver
 
 Copyright Alexander Rössler <mail AT roessler DOT systems>
 """
@@ -16,8 +16,8 @@ import json
 import hal
 
 
-class HS110():
-    def __init__(self, ip):
+class HS1xx():
+    def __init__(self, ip, emeter=True):
         self.ip = ip
         self.port = 9999  # standard port
         self.connected = False
@@ -26,11 +26,19 @@ class HS110():
         self.recv_buffer = 2048
         # status
         self.enable = False
-        self.voltage = 0.0
-        self.current = 0.0
-        self.power = 0.0
-        self.energy = 0.0
         self.error = False
+        self.emeter = emeter
+        if self.emeter:
+            self.voltage = 0.0
+            self.current = 0.0
+            self.power = 0.0
+            self.energy = 0.0
+
+        # prepare the update command
+        commands = ['"system":{"get_sysinfo":null}']
+        if self.emeter:
+            commands.append('"emeter":{"get_realtime":{}}')
+        self.update_command = '{%s}' % ','.join(commands)
 
     # source: https://github.com/softScheck/tplink-smartplug
     # Encryption and Decryption of TP-Link Smart Home Protocol
@@ -92,18 +100,21 @@ class HS110():
         self.updateStatus()
 
     def updateStatus(self):
-        cmd = '{"emeter":{"get_realtime":{}},' + \
-              '"system":{"get_sysinfo":null}}'
-
-        data = self.socketCmd(cmd)
+        data = self.socketCmd(self.update_command)
         if data is None:
             return
+
+        # update relay state
         sysinfo = data['system']['get_sysinfo']
         err_code = sysinfo['err_code']
         if not err_code:
             self.enable = sysinfo['relay_state']
         else:
             self.handleError()
+        if not self.emeter:
+            return
+
+        # update emeter state
         realtime = data['emeter']['get_realtime']
         err_code = realtime['err_code']
         if not err_code:
@@ -142,25 +153,28 @@ def main():
     parser.add_argument('-t', '--timeout', help='Allowed network delay before timeout', default=0.5)
     parser.add_argument('-a', '--address', metavar='<ip>',
                         required=True, help='Target IP Address', type=validIP)
+    parser.add_argument('-e', '--emeter', help='Enable the emeter (HS110 only)', action='store_true')
 
     args = parser.parse_args()
 
     updateInterval = float(args.interval)
     timeout = float(args.timeout)
     address = args.address
+    emeter = args.emeter
 
     h = hal.component(args.name)
     enablePin = h.newpin('enable', hal.HAL_BIT, hal.HAL_IO)
-    currentPin = h.newpin('current', hal.HAL_FLOAT, hal.HAL_OUT)
-    voltagePin = h.newpin('voltage', hal.HAL_FLOAT, hal.HAL_OUT)
-    powerPin = h.newpin('power', hal.HAL_FLOAT, hal.HAL_OUT)
-    energyPin = h.newpin('energy', hal.HAL_FLOAT, hal.HAL_OUT)
     errorPin = h.newpin('error', hal.HAL_BIT, hal.HAL_OUT)
+    if emeter:
+        currentPin = h.newpin('current', hal.HAL_FLOAT, hal.HAL_OUT)
+        voltagePin = h.newpin('voltage', hal.HAL_FLOAT, hal.HAL_OUT)
+        powerPin = h.newpin('power', hal.HAL_FLOAT, hal.HAL_OUT)
+        energyPin = h.newpin('energy', hal.HAL_FLOAT, hal.HAL_OUT)
     h.ready()
 
     last_hal_enable = False
     last_plug_enable = False
-    plug = HS110(address)
+    plug = HS1xx(address, emeter)
     plug.timeout = timeout
 
     try:
@@ -169,12 +183,12 @@ def main():
 
             # update device status
             plug.update()
-            # update may return an error
-            if not plug.error:
-                currentPin.value = plug.current
-                voltagePin.value = plug.voltage
-                powerPin.value = plug.power
-                energyPin.value = plug.energy
+            if not plug.error:  # update may return an error
+                if emeter:  # update emeter values if enabled
+                    currentPin.value = plug.current
+                    voltagePin.value = plug.voltage
+                    powerPin.value = plug.power
+                    energyPin.value = plug.energy
                 enable = enablePin.value
                 # update relay state
                 if last_hal_enable != enable and enable != plug.enable:
