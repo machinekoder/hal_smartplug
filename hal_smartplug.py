@@ -147,7 +147,7 @@ def main():
             parser.error("Invalid IP Address.")
         return ip
 
-    parser = argparse.ArgumentParser(description='HAL component to read Temperature values over I2C')
+    parser = argparse.ArgumentParser(description='HAL component to control TP-Link HS100/HS110 smartplugs')
     parser.add_argument('-n', '--name', help='HAL component name', required=True)
     parser.add_argument('-i', '--interval', help='Value update interval', default=0.5)
     parser.add_argument('-t', '--timeout', help='Allowed network delay before timeout', default=0.5)
@@ -155,13 +155,14 @@ def main():
                         required=True, help='Target IP Address', type=validIP)
     parser.add_argument('-e', '--emeter', help='Enable the emeter (HS110 only)', action='store_true')
 
+    # parse arguments
     args = parser.parse_args()
-
     updateInterval = float(args.interval)
     timeout = float(args.timeout)
     address = args.address
     emeter = args.emeter
 
+    # create HAL component
     h = hal.component(args.name)
     enablePin = h.newpin('enable', hal.HAL_BIT, hal.HAL_IO)
     errorPin = h.newpin('error', hal.HAL_BIT, hal.HAL_OUT)
@@ -178,7 +179,7 @@ def main():
     plug.timeout = timeout
 
     try:
-        while (True):
+        while (True):  # main loop
             startTime = time.time()
 
             # update device status

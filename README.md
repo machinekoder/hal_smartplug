@@ -4,6 +4,16 @@ smart-plug. The HAL component uses the reverse engineered protocol
 en/decryption which is described at
 [SoftCheck](https://www.softscheck.com/en/reverse-engineering-tp-link-hs110/).
 
+## Installing the component
+The HAL component can be installed to the machinekit installation
+using the following command, whereas `<machinekit_dir>` needs to be
+replaced with your actual machinekit installation folder. Without any
+additional arguments the component will be installed in `/usr/bin/`.
+
+``` sh
+sudo make install MACHINEKIT_DIR=<machinekit_dir>
+```
+
 ## Using the component
 The `hal_smartplug` component can be integrated into any HAL
 configuration with the following command:
